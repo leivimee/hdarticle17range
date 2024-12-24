@@ -1,0 +1,47 @@
+---
+title: "hdarticle17range: Distribution and range calculation tool for Habitats Directive Article 17 reporting"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+## Overview
+
+Package 'hdarticle17range' implements several functions that simplify distribution and range calculation of species and habitat types in various member states and biogeographical regions.
+
+Range of a species or habitat type is a crucial parameter in Article 17 reporing under Habitats Directive. While distribution is a representation of the occurrences in the 10x10 km grid, range calculation is more sophisticated. Range is obtained by generalizing the distribution, by creating envelope(s) around the distribution grids using a parameter named 'gap distance'.
+
+
+## Installation
+
+You can install the development version from [GitHub](https://github.com/) with:
+
+```{r eval = FALSE}
+#install.packages("devtools")
+devtools::install_github("leivimee/hdarticle17range")
+```
+
+
+## Usage
+
+Grid cells of a biogeographic regions in specific member state (MS) can be obtained with a function names 'ms_region_reference_grid()'. The function takes two important arguments -- 'memberstate' and 'biogeoregion'. For example, to retrieve the reference grid for Estonia in Boreal biogeographic region, one can call:
+
+```{r eval = TRUE, include = TRUE, fig.width=4, fig.height=4}
+library(hdarticle17range)
+# retrieve cells
+eebor10km <- ms_region_reference_grid("EE", "BOR")
+# plot
+ggplot(data = eebor10km)+
+  geom_sf()+
+  theme_void()
+
+```
+
+
+
+
+

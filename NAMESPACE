@@ -1,0 +1,5 @@
+exportPattern("^[[:alpha:]]+")
+importFrom("stats", "dist", "filter")
+importFrom(dplyr,"%>%")
+importFrom(tibble,"tibble")
+importFrom(rlang,".data")

@@ -1,0 +1,31 @@
+Package: hdarticle17range
+Type: Package
+Title: Distribution and range calculation tool for Habitats Directive Article 17 reporting
+Version: 0.1.0
+Authors@R: 
+    person("Meelis", "Leivits", , "meelis.leivits@gmail.com", role = c("aut", "cre"))
+Description: Range of a species or habitat type is a crucial parameter in Article 17 reporing 
+    under Habitats Directive. While distribution is a representation of the occurrences in the
+    10x10 km grid, range calculation is more sophisticated. Range is obtained by generalizing 
+    the distribution, by creating envelope(s) around the distribution grids using a parameter
+    named 'gap distance'. 
+License: GPL-3
+URL: https://github.com/leivimee/hdarticle17range
+BugReports: https://github.com/leivimee/hdarticle17range/issues
+Encoding: UTF-8
+LazyData: true
+LazyDataCompression: xz
+Depends: 
+    R (>= 3.2.0)
+Imports:
+    rlang,
+    tibble,
+    dplyr,
+    tidyr,
+    sf,
+    units,
+    ggplot2
+Suggests:
+    testthat (>= 3.0.0)
+RoxygenNote: 7.3.2
+Config/testthat/edition: 3
