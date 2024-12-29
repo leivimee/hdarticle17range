@@ -1,5 +1,6 @@
 ---
 title: "hdarticle17range: Distribution and range calculation tool for Habitats Directive Article 17 reporting"
+bibliography: references.bib
 output: github_document
 ---
 
@@ -7,41 +8,121 @@ output: github_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-
-
 ## Overview
 
 Package 'hdarticle17range' implements several functions that simplify distribution and range calculation of species and habitat types in various member states and biogeographical regions.
 
-Range of a species or habitat type is a crucial parameter in Article 17 reporing under Habitats Directive. While distribution is a representation of the occurrences in the 10x10 km grid, range calculation is more sophisticated. Range is obtained by generalizing the distribution, by creating envelope(s) around the distribution grids using a parameter named 'gap distance'.
+Range of a species or habitat type is a crucial parameter in Article 17 reporing under Habitats Directive. While distribution is a representation of the occurrences in the 10x10 km grid, range calculation is more sophisticated. Range is obtained by generalizing the distribution, by creating envelope(s) around the distribution grids using a parameter named 'gap distance' [@guidelines].
 
+#### Datasets
+
+| Dataset           | Description                                                                       |
+| :---------------- | :-------------------------------------------------------------------------------- |
+| eu10km            | EEA reference grid (10 km) geometries [@eearefgrid].                              |
+| biogeoregions10km | EEA refecence grid (10 km) of biogeographic regions [@biogeoregions,@msfdregions].|
+| ms10kmcells       | EEA reference grids (10 km) of member states [@eearefgrid].                       |
+| gapdistance       | Default gap distance for species and habitats.                                    |
+| eesti             | Simplified country borders for Estonia.                                           |
+
+### Functions
+
+| Function                     | Description                                                                                 |
+| :--------------------------- | :------------------------------------------------------------------------------------------ |
+| ms\_region\_reference_grid() | Prepare a reference related to specific member state and biogeographic region.              |
+| features\_to\_range()        | Calculate distribution and range from input occurence data, reference grid and gap distance.|
 
 ## Installation
 
 You can install the development version from [GitHub](https://github.com/) with:
 
-```{r eval = FALSE}
-#install.packages("devtools")
+```{r installpackage, eval = FALSE}
+# install.packages("devtools")
 devtools::install_github("leivimee/hdarticle17range")
 ```
 
-
 ## Usage
 
-Grid cells of a biogeographic regions in specific member state (MS) can be obtained with a function names 'ms_region_reference_grid()'. The function takes two important arguments -- 'memberstate' and 'biogeoregion'. For example, to retrieve the reference grid for Estonia in Boreal biogeographic region, one can call:
-
-```{r eval = TRUE, include = TRUE, fig.width=4, fig.height=4}
+```{r loadpackages, eval=TRUE, results='hide'}
+# load packages
 library(hdarticle17range)
-# retrieve cells
+```
+
+Grid cells of a biogeographic regions in specific member state (MS) can be obtained with a function called 'ms_region_reference_grid'. The function takes two important arguments -- 'memberstate' and 'biogeoregion'. For example, to retrieve the reference grid for Estonia in Boreal biogeographic region, one can call:
+
+```{r example1, eval = TRUE, include = TRUE, fig.width=6, fig.height=4}
+# prepare cells
 eebor10km <- ms_region_reference_grid("EE", "BOR")
+# load ggplot2 for graphic output
+library(ggplot2)
 # plot
 ggplot(data = eebor10km)+
   geom_sf()+
   theme_void()
+```
 
+The function makes a query from grid cells that have intersection with both -- with the EEA given MS grid cells and EEA given BG regions. Sometimes it is needed to exclude some cells that are common with some neighbouring MS. It is possible to fine tune the reference grid by providing country borders.
+
+```{r example2, eval = TRUE, include = TRUE, fig.width=6, fig.height=4}
+# load example dataset
+data(eesti)
+# prepare cells
+eebor10kmee <- ms_region_reference_grid("EE", "BOR", eesti)
+# plot
+ggplot(data = eebor10kmee)+
+  geom_sf()+
+  theme_void()
+```
+
+Lets calculate distribution and range maps from dummy data.
+
+```{r example3, eval = TRUE, include = TRUE}
+# set seed for reproducible example
+set.seed(69)
+# generate 20 random points
+exa_spe_occ <- sf::st_as_sf(sf::st_sample(eesti, 20))
+exa_spe_range <- features_to_range(exa_spe_occ, eebor10kmee)
+```
+
+Examine the structure of output.
+
+```{r example4, eval = TRUE, include = TRUE}
+str(exa_spe_range)
+```
+
+The output consists of a list with elements **dist** and **range**. Element **dist** contains a list with three elements: 
+
+**dist**
+: geometry (sfc POLYGON) of grid cells
+
+**area** 
+: area (units) of distribution in units [km^2]
+
+**cells**
+: a vector (character) containing cell codes
+
+
+Element **range** contains a list with three elements: 
+
+**range**
+: geometry (sfc POLYGON) of grid cells
+
+**area**
+: area (units) of range in units [km^2]
+
+**cells**
+: a vector (character) containing cell codes
+
+Plot the range object.
+
+```{r example5, eval = TRUE, include = TRUE, fig.width=6, fig.height=4}
+ggplot(data = exa_spe_range$range$range)+
+  geom_sf()+
+  geom_sf(data=eesti, fill=NA, color="#cccccc")+
+  geom_sf(data=exa_spe_occ)+
+  theme_void()
 ```
 
 
 
-
+## References
 

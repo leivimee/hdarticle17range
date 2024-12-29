@@ -1,20 +1,20 @@
 #' Calculate relevant reference grid of a biogeographical region of a member state
 #'
 #' @description
-#' `ms_region_reference_grid` is a function that returns grid
-#' cells of a specific biogeoregion of a member state.
+#' `ms_region_reference_grid` is a function that returns grid cells of a
+#' specific biogeoregion of a member state.
 #'
 #' @details
-#' By default this function returns intersecting cells of a member
-#' state reference grid and biogeographical region. Member state area
-#' can be specified in input to fine-tune the result or exclude
-#' irrelevant cells.
+#' By default this function returns intersecting cells of a member state
+#' reference grid and biogeographical region. Member state area can be specified
+#' in input to fine-tune the result or exclude irrelevant cells.
 #'
 #' @param memberstate Two-letter code of a member state.
 #' @param biogeoregion Three or four-letter code of biogeographical region.
 #' @param countryborders Polygon geometry of member state.
 #'
-#' @returns Returns grid cells of a member state in specific biogeographic region.
+#' @returns Returns an sf object containing grid cells of a member state in
+#' specific biogeographic region.
 #'
 #' @examples
 #' # library(sf)
@@ -26,30 +26,21 @@
 #' library(ggplot2)
 #' ggplot(bor_cells_ee)+geom_sf(fill=NA)+theme_void()
 #'
-#' @references DG Environment. 2023. Reporting under Article 17
-#' of the Habitats Directive: Guidelines on concepts and definitions
-#' – Article 17 of Directive 92/43/EEC, Reporting period 2019-2024.
-#' Brussels. Pp 104
+#' @references DG Environment. 2023. Reporting under Article 17 of the Habitats
+#' Directive: Guidelines on concepts and definitions – Article 17 of Directive
+#' 92/43/EEC, Reporting period 2019-2024. Brussels. Pp 104
 #'
 #' @importFrom dplyr %>%
 #'
 #' @export
 ms_region_reference_grid <- function(memberstate="EE", biogeoregion="BOR", countryborders=NULL) {
 
-  #requireNamespace(magrittr, sf, dplyr)
+  if(!requireNamespace("sf", quietly = TRUE)) {
+    stop("ms_region_reference_grid() requires the suggested package `sf`.\n",
+         "Use install.packages(\"sf\") to install and then retry.")
+  }
 
-  #load("data/borealbalticregions.rda")
-  #load("data/msgrids.rda")
-
-  #ms <- region <- NULL
   CELLCODE <- NULL
-
-  #utils::globalVariables(c("CELLCODE"))
-
-  #utils::data(borealbalticregions)
-  #utils::data(msgrids)
-
-  #if(getRversion() >= "2.15.1")  utils::globalVariables(c("."))
 
   mscells <- hdarticle17range::ms10kmcells[hdarticle17range::ms10kmcells$ms==memberstate, "CELLCODE"]
   #ms_grid <- hdarticle17range::eu10km %>% dplyr::filter(`CELLCODE` %in% mscells)
