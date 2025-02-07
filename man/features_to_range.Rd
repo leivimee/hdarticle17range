@@ -4,19 +4,25 @@
 \alias{features_to_range}
 \title{Calculate distribution and range from input features}
 \usage{
-features_to_range(features, reference_grid, gap_distance = 40000, graphics = F)
+features_to_range(
+  features,
+  reference_grid,
+  gap_distance = 40000,
+  exclude = NULL
+)
 }
 \arguments{
 \item{features}{Input geometries of habitat area (polygons) or
 species occurence (points, polygons).}
 
-\item{reference_grid}{Reference grid geometry of relevant member
-state and biogeographical region.}
+\item{reference_grid}{Reference grid geometry as sf object of relevant member
+state and biogeographical region. Can be prepared with function
+'ms_region_reference_grid'.}
 
-\item{gap_distance}{Gap distance parameter in meters. If not
-specified, default 40 km.}
+\item{gap_distance}{Gap distance parameter in meters. If not specified,
+default 40 km.}
 
-\item{graphics}{Produce graphic output?}
+\item{exclude}{Cells to be excluded. If specified.}
 }
 \value{
 Outputs a list with elements named 'distribution' and 'range'.
@@ -45,11 +51,10 @@ procedure described in guidelines of Article 17 reporting under
 habitats directive.
 }
 \details{
-This is a function that calculates distribution and range maps
-from input features and reference grid. Outputs a list with elements
-'distribution' and 'range'. Both consist of list containing an sfc
-object, with geometry of distribution/range, vector of cell codes
-and area in sq km-s.
+This is a function that calculates distribution and range maps from input
+features and reference grid. Outputs a list with elements 'distribution' and
+'range'. Both consist of list containing an sfc object, with geometry of
+distribution/range, vector of cell codes and area in sq km-s.
 }
 \references{
 DG Environment. 2023. Reporting under Article 17

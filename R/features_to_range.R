@@ -18,7 +18,7 @@
 #' 'ms_region_reference_grid'.
 #' @param gap_distance Gap distance parameter in meters. If not specified,
 #' default 40 km.
-#' @param graphics Produce graphic output?
+#' @param exclude Cells to be excluded. If specified.
 #'
 #' @returns Outputs a list with elements named 'distribution' and 'range'.
 #' Both consist of list containing an sfc object, with geometry of
@@ -49,7 +49,7 @@
 #' @importFrom rlang .data
 #'
 #' @export
-features_to_range <- function(features, reference_grid, gap_distance=40e3, graphics=F) {
+features_to_range <- function(features, reference_grid, gap_distance=40e3, exclude=NULL) {
 
   if(!requireNamespace("sf", quietly = TRUE)) {
     stop("ms_region_reference_grid() requires the suggested package `sf`.\n",
@@ -69,7 +69,8 @@ features_to_range <- function(features, reference_grid, gap_distance=40e3, graph
   }
 
   if(!sf::st_crs(features)==sf::st_crs(reference_grid)) {
-    stop("Input reference grid CRS and input feature CRS does not match!")
+    warning("Input reference grid CRS and input feature CRS does not match! Transforming to reference grid CRS...")
+    features <- sf::st_transform(features, crs=sf::st_crs(reference_grid))
   }
 
   cell1<-x<-y<-x1<-y1<-x2<-y2<-ID<-distance<-CELLCODE<-NULL
@@ -127,66 +128,53 @@ features_to_range <- function(features, reference_grid, gap_distance=40e3, graph
       by="cell2"
     )
 
-  clines_in_range<-cdist_in_range %>%
-    dplyr::select(`cell1`, `x1`, `y1`) %>%
-    dplyr::rename(`ID`=`cell1`, `x`=`x1`, `y`=`y1`) %>%
-    dplyr::bind_rows(
-      cdist_in_range %>%
-        dplyr::select(`cell1`, `x2`, `y2`) %>%
-        dplyr::rename(`ID`=`cell1`, `x`=`x2`, `y`=`y2`)
-    ) %>%
-    sf::st_as_sf( coords = c("x", "y"), crs=3035) %>%
-    dplyr::group_by(`ID`) %>%
-    dplyr::summarize() %>%
-    sf::st_cast("MULTILINESTRING")
-
-  clines_in_range<-cdist_in_range %>%
+  # construct linestrings between cells within gap distance to each other
+  cline_a <- cdist_in_range %>%
     dplyr::mutate(ID=1:nrow(cdist_in_range)) %>%
     dplyr::select(`ID`, `x1`, `y1`) %>%
     dplyr::rename(`x`=`x1`, `y`=`y1`) %>%
-    dplyr::bind_rows(
-      cdist_in_range %>%
-        dplyr::mutate(ID=1:nrow(cdist_in_range)) %>%
-        dplyr::select(`ID`, `x2`, `y2`) %>%
-        dplyr::rename(`x`=`x2`, `y`=`y2`)
-    ) %>%
-    sf::st_as_sf( coords = c("x", "y"), crs=3035) %>%
-    dplyr::group_by(`ID`) %>%
-    dplyr::summarize() %>%
-    sf::st_cast("MULTILINESTRING") %>%
-    sf::st_transform(crs=sf::st_crs(reference_grid))
+    sf::st_as_sf( coords = c("x", "y"), crs=sf::st_crs(reference_grid))
 
+  cline_b <- cdist_in_range %>%
+    dplyr::mutate(ID=1:nrow(cdist_in_range)) %>%
+    dplyr::select(`ID`, `x2`, `y2`) %>%
+    dplyr::rename(`x`=`x2`, `y`=`y2`) %>%
+    sf::st_as_sf( coords = c("x", "y"), crs=sf::st_crs(reference_grid))
 
-  #elupleviksf %>%
-  #  st_centroid() %>%
-  #  ggplot()+geom_sf()+geom_sf(data=elupleviksf, fill=NA)+geom_sf(data=clines_in_range)+theme_void()
+  clines_in_range <- sf::st_sfc(mapply(function(a,b){
+    sf::st_cast(sf::st_union(a,b),"LINESTRING")},
+    cline_a$geometry, cline_b$geometry, SIMPLIFY=FALSE))
 
+  clines_in_range1<-sf::st_as_sf(clines_in_range, crs=sf::st_crs(reference_grid)) %>%
+    dplyr::mutate(distance=as.numeric(sf::st_length(clines_in_range))) %>%
+    dplyr::filter(distance<gap_distance)
 
-  # lines
-  cells_in_range1<-reference_grid %>% sf::st_intersects(clines_in_range)
-  range_cells1<-reference_grid %>% dplyr::slice(which(lengths(cells_in_range1)>0)) %>% sf::st_drop_geometry() %>% dplyr::select(`CELLCODE`) %>% unlist() %>% unname()
+  # which "unhabited" cells are "connected" within gap distance
+  unhabitedcells<-reference_grid %>% dplyr::filter(!CELLCODE %in% elupleviksf$CELLCODE)
+  unhabitedcells1<-unhabitedcells %>% sf::st_intersects(clines_in_range1)
 
-  # add points -> isolated cells
+  uhc_in_range<-unhabitedcells %>% dplyr::slice(which(lengths(unhabitedcells1)>1))
+
+  #elupleviksf %>% ggplot()+geom_sf()+geom_sf(data=uhc_in_range %>% st_centroid())+geom_sf(data=clines_in_range1)+theme_void()
+
+  # habited/occupied cells
+  range_cells1<-elupleviksf %>% sf::st_drop_geometry() %>% dplyr::select(`CELLCODE`) %>% unlist() %>% unname()
+  # cells that are connected
+  range_cells3<-uhc_in_range %>% sf::st_drop_geometry() %>% dplyr::select(`CELLCODE`) %>% unlist() %>% unname()
+  # isolated cells, but habited/occupied
   range_cells2<-elupleviksf %>% sf::st_drop_geometry() %>% dplyr::select(`CELLCODE`) %>% unlist() %>% unname()
 
-  range_cells<-unique(c(range_cells1, range_cells2))
+  # exclude rules applied if needed
+  if(!is.null(exclude)) {
+    range_cells_pre <- unique(c(range_cells1, range_cells2, range_cells3))
+    range_cells <- range_cells_pre[-which(range_cells_pre %in% exclude)]
+  } else {
+    range_cells<-unique(c(range_cells1, range_cells2, range_cells3))
+  }
 
   cells_in_range<-reference_grid %>% dplyr::filter(`CELLCODE` %in% range_cells)
 
   ranges<-cells_in_range %>% sf::st_union()
-
-  if(graphics==T) {
-
-    elupleviksf %>%
-      sf::st_centroid() %>%
-      ggplot2::ggplot()+
-      ggplot2::geom_sf(data=ranges, fill="brown1")+
-      ggplot2::geom_sf()+
-        #geom_sf(data=elupleviksf, fill=NA)+
-        #geom_sf(data=clines_in_range)+
-      ggplot2::theme_void()
-  }
-
 
   distobject<-list(
     dist=elupleviksf %>% sf::st_as_sfc(),

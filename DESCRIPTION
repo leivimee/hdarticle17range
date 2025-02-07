@@ -1,7 +1,8 @@
 Package: hdarticle17range
 Type: Package
 Title: Distribution and range calculation tool for Habitats Directive Article 17 reporting
-Version: 0.1.0
+Version: 0.1.1
+Date: 2025-02-07
 Authors@R: 
     person("Meelis", "Leivits", , "meelis.leivits@gmail.com", role = c("aut", "cre"))
 Description: Range of a species or habitat type is a crucial parameter in Article 17 reporing 
