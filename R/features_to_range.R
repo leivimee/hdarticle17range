@@ -98,78 +98,89 @@ features_to_range <- function(features, reference_grid, gap_distance=40e3, exclu
     dplyr::select(x,y) %>%
     sf::st_drop_geometry()
 
-  eluplevikcd<-eluplevikcxy %>% stats::dist()
+  # if more than 1 cell ...
+  if(nrow(eluplevikcxy)>1) {
 
-  #nrow(eluplevikcd)
-  #ncol(eluplevikcd)
+    eluplevikcd<-eluplevikcxy %>% stats::dist()
 
-  # construct lines
-
-  cdist_long <- tibble::tibble(
+    cdist_long <- tibble::tibble(
       cell1=1:nrow(eluplevikcd)
-      ) %>%
-    cbind( as.matrix(eluplevikcd) ) %>%
-    tidyr::pivot_longer(2:(nrow(eluplevikcd)+1),names_to="cell2", values_to = "distance")
-
-  cdist_in_range<-cdist_long %>%
-    dplyr::filter(distance<gap_distance) %>%
-    dplyr::filter(distance>0) %>%
-    dplyr::mutate(cell1=as.character(cell1)) %>%
-    dplyr::left_join(
-      eluplevikcxy %>%
-        dplyr::mutate(cell1=as.character(1:nrow(eluplevikcxy))) %>%
-        dplyr::rename(`x1`=`x`, `y1`=`y`),
-      by="cell1"
     ) %>%
-    dplyr::left_join(
-      eluplevikcxy %>%
-        dplyr::mutate(cell2=as.character(1:nrow(eluplevikcxy))) %>%
-        dplyr::rename(`x2`=`x`, `y2`=`y`),
-      by="cell2"
-    )
+      cbind( as.matrix(eluplevikcd) ) %>%
+      tidyr::pivot_longer(2:(nrow(eluplevikcd)+1),names_to="cell2", values_to = "distance")
 
-  # construct linestrings between cells within gap distance to each other
-  cline_a <- cdist_in_range %>%
-    dplyr::mutate(ID=1:nrow(cdist_in_range)) %>%
-    dplyr::select(`ID`, `x1`, `y1`) %>%
-    dplyr::rename(`x`=`x1`, `y`=`y1`) %>%
-    sf::st_as_sf( coords = c("x", "y"), crs=sf::st_crs(reference_grid))
+    cdist_in_range<-cdist_long %>%
+      dplyr::filter(distance<gap_distance) %>%
+      dplyr::filter(distance>0) %>%
+      dplyr::mutate(cell1=as.character(cell1)) %>%
+      dplyr::left_join(
+        eluplevikcxy %>%
+          dplyr::mutate(cell1=as.character(1:nrow(eluplevikcxy))) %>%
+          dplyr::rename(`x1`=`x`, `y1`=`y`),
+        by="cell1"
+      ) %>%
+      dplyr::left_join(
+        eluplevikcxy %>%
+          dplyr::mutate(cell2=as.character(1:nrow(eluplevikcxy))) %>%
+          dplyr::rename(`x2`=`x`, `y2`=`y`),
+        by="cell2"
+      )
 
-  cline_b <- cdist_in_range %>%
-    dplyr::mutate(ID=1:nrow(cdist_in_range)) %>%
-    dplyr::select(`ID`, `x2`, `y2`) %>%
-    dplyr::rename(`x`=`x2`, `y`=`y2`) %>%
-    sf::st_as_sf( coords = c("x", "y"), crs=sf::st_crs(reference_grid))
+    # if any cells within gap distance ...
+    if(nrow(cdist_in_range)>0) {
 
-  clines_in_range <- sf::st_sfc(mapply(function(a,b){
-    sf::st_cast(sf::st_union(a,b),"LINESTRING")},
-    cline_a$geometry, cline_b$geometry, SIMPLIFY=FALSE))
+      # construct linestrings between cells within gap distance to each other ...
+      cline_a <- cdist_in_range %>%
+        dplyr::mutate(ID=1:nrow(cdist_in_range)) %>%
+        dplyr::select(`ID`, `x1`, `y1`) %>%
+        dplyr::rename(`x`=`x1`, `y`=`y1`) %>%
+        sf::st_as_sf( coords = c("x", "y"), crs=sf::st_crs(reference_grid))
 
-  clines_in_range1<-sf::st_as_sf(clines_in_range, crs=sf::st_crs(reference_grid)) %>%
-    dplyr::mutate(distance=as.numeric(sf::st_length(clines_in_range))) %>%
-    dplyr::filter(distance<gap_distance)
+      cline_b <- cdist_in_range %>%
+        dplyr::mutate(ID=1:nrow(cdist_in_range)) %>%
+        dplyr::select(`ID`, `x2`, `y2`) %>%
+        dplyr::rename(`x`=`x2`, `y`=`y2`) %>%
+        sf::st_as_sf( coords = c("x", "y"), crs=sf::st_crs(reference_grid))
 
-  # which "unhabited" cells are "connected" within gap distance
-  unhabitedcells<-reference_grid %>% dplyr::filter(!CELLCODE %in% elupleviksf$CELLCODE)
-  unhabitedcells1<-unhabitedcells %>% sf::st_intersects(clines_in_range1)
+      clines_in_range <- sf::st_sfc(mapply(function(a,b){
+        sf::st_cast(sf::st_union(a,b),"LINESTRING")},
+        cline_a$geometry, cline_b$geometry, SIMPLIFY=FALSE))
 
-  uhc_in_range<-unhabitedcells %>% dplyr::slice(which(lengths(unhabitedcells1)>1))
+      clines_in_range1<-sf::st_as_sf(clines_in_range, crs=sf::st_crs(reference_grid)) %>%
+        dplyr::mutate(distance=as.numeric(sf::st_length(clines_in_range))) %>%
+        dplyr::filter(distance<gap_distance)
 
-  #elupleviksf %>% ggplot()+geom_sf()+geom_sf(data=uhc_in_range %>% st_centroid())+geom_sf(data=clines_in_range1)+theme_void()
+      # which "unhabited" cells are "connected" within gap distance
+      unhabitedcells<-reference_grid %>% dplyr::filter(!CELLCODE %in% elupleviksf$CELLCODE)
+      unhabitedcells1<-unhabitedcells %>% sf::st_intersects(clines_in_range1)
 
-  # habited/occupied cells
-  range_cells1<-elupleviksf %>% sf::st_drop_geometry() %>% dplyr::select(`CELLCODE`) %>% unlist() %>% unname()
-  # cells that are connected
-  range_cells3<-uhc_in_range %>% sf::st_drop_geometry() %>% dplyr::select(`CELLCODE`) %>% unlist() %>% unname()
-  # isolated cells, but habited/occupied
-  range_cells2<-elupleviksf %>% sf::st_drop_geometry() %>% dplyr::select(`CELLCODE`) %>% unlist() %>% unname()
+      uhc_in_range<-unhabitedcells %>% dplyr::slice(which(lengths(unhabitedcells1)>1))
 
-  # exclude rules applied if needed
-  if(!is.null(exclude)) {
-    range_cells_pre <- unique(c(range_cells1, range_cells2, range_cells3))
-    range_cells <- range_cells_pre[-which(range_cells_pre %in% exclude)]
-  } else {
-    range_cells<-unique(c(range_cells1, range_cells2, range_cells3))
+      #elupleviksf %>% ggplot()+geom_sf()+geom_sf(data=uhc_in_range %>% st_centroid())+geom_sf(data=clines_in_range1)+theme_void()
+
+      # habited/occupied cells
+      range_cells1<-elupleviksf %>% sf::st_drop_geometry() %>% dplyr::select(`CELLCODE`) %>% unlist() %>% unname()
+      # cells that are connected
+      range_cells3<-uhc_in_range %>% sf::st_drop_geometry() %>% dplyr::select(`CELLCODE`) %>% unlist() %>% unname()
+      # isolated cells, but habited/occupied
+      range_cells2<-elupleviksf %>% sf::st_drop_geometry() %>% dplyr::select(`CELLCODE`) %>% unlist() %>% unname()
+
+      # exclude rules applied if needed
+      if(!is.null(exclude)) {
+        range_cells_pre <- unique(c(range_cells1, range_cells2, range_cells3))
+        range_cells <- range_cells_pre[-which(range_cells_pre %in% exclude)]
+      } else {
+        range_cells<-unique(c(range_cells1, range_cells2, range_cells3))
+      }
+
+    } else { # if any cells within gap_distance
+      # just pick the isolated ones ...
+      range_cells<-elupleviksf %>% sf::st_drop_geometry() %>% dplyr::select(`CELLCODE`) %>% unlist() %>% unname()
+    }
+
+  } else { # if more than 1 cell ...
+    # just get the one ...
+    range_cells<-elupleviksf %>% sf::st_drop_geometry() %>% dplyr::select(`CELLCODE`) %>% unlist() %>% unname()
   }
 
   cells_in_range<-reference_grid %>% dplyr::filter(`CELLCODE` %in% range_cells)
