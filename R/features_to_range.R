@@ -165,22 +165,23 @@ features_to_range <- function(features, reference_grid, gap_distance=40e3, exclu
       # isolated cells, but habited/occupied
       range_cells2<-elupleviksf %>% sf::st_drop_geometry() %>% dplyr::select(`CELLCODE`) %>% unlist() %>% unname()
 
-      # exclude rules applied if needed
-      if(!is.null(exclude)) {
-        range_cells_pre <- unique(c(range_cells1, range_cells2, range_cells3))
-        range_cells <- range_cells_pre[-which(range_cells_pre %in% exclude)]
-      } else {
-        range_cells<-unique(c(range_cells1, range_cells2, range_cells3))
-      }
+      range_cells_pre <- unique(c(range_cells1, range_cells2, range_cells3))
 
     } else { # if any cells within gap_distance
       # just pick the isolated ones ...
-      range_cells<-elupleviksf %>% sf::st_drop_geometry() %>% dplyr::select(`CELLCODE`) %>% unlist() %>% unname()
+      range_cells_pre<-elupleviksf %>% sf::st_drop_geometry() %>% dplyr::select(`CELLCODE`) %>% unlist() %>% unname()
     }
 
   } else { # if more than 1 cell ...
     # just get the one ...
-    range_cells<-elupleviksf %>% sf::st_drop_geometry() %>% dplyr::select(`CELLCODE`) %>% unlist() %>% unname()
+    range_cells_pre<-elupleviksf %>% sf::st_drop_geometry() %>% dplyr::select(`CELLCODE`) %>% unlist() %>% unname()
+  }
+
+  # exclude rules applied if needed
+  if(!is.null(exclude)) {
+    range_cells <- range_cells_pre[-which(range_cells_pre %in% exclude)]
+  } else {
+    range_cells<-range_cells_pre
   }
 
   cells_in_range<-reference_grid %>% dplyr::filter(`CELLCODE` %in% range_cells)
